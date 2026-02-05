@@ -1,1 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Pagos</title>
+    <style>
+        :root {
+            --bg: #f4f7f6;
+            --card: #ffffff;
+            --primary: #3182ce;
+            --green: #28a745;
+            --orange: #fd7e14;
+            --text: #2d3748;
+        }
+
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: var(--bg); 
+            padding: 15px; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            color: var(--text);
+        }
+
+        .container { width: 100%; max-width: 400px; }
+
+        .header-summary {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(49, 130, 206, 0.3);
+            text-align: center;
+        }
+
+        .header-summary h2 { margin: 0; font-size: 0.9rem; text-transform: uppercase; opacity: 0.9; }
+        .header-summary .total-amount { font-size: 2.2rem; font-weight: 800; margin: 5px 0; }
+        .header-summary .month-label { font-size: 1rem; font-weight: 500; text-transform: capitalize; }
+
+        .expense-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #edf2f7;
+        }
+
+        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .title-group { display: flex; align-items: center; gap: 12px; }
+        .icon { font-size: 1.2rem; background: #edf2f7; padding: 8px; border-radius: 12px; }
+        h4 { margin: 0; font-size: 1rem; }
+
+        .amount-input {
+            border: 1.5px solid #edf2f7;
+            background: #fff;
+            padding: 8px;
+            border-radius: 10px;
+            width: 100px;
+            font-weight: 700;
+            text-align: right;
+            font-size: 1.1rem;
+            /* Evita zoom automático en iPhone */
+            font-size: 16px; 
+        }
+
+        .card-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid #f7fafc;
+        }
+
+        .status-btn {
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .pending { background: #fffaf0; color: var(--orange); border: 1px solid #feebc8; }
+        .paid { background: #f0fff4; color: var(--green); border: 1px solid #c6f6d5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-summary">
+        <h2 id="current-month">---</h2>
+        <div class="total-amount" id="total-pagado">$0</div>
+        <div class="month-label">Total Pagado</div>
+    </div>
+
+    <div id="app"></div>
+</div>
+
+<script>
+    const serviciosIniciales = [
+        { id: 'esval', nombre: 'Esval', icon: '💧', monto: 0, pagado: false },
+        { id: 'gasco', nombre: 'Gasco', icon: '🔥', monto: 0, pagado: false },
+        { id: 'chilquinta', nombre: 'Chilquinta', icon: '⚡', monto: 0, pagado: false },
+        { id: 'wom_f', nombre: 'Wom Fibra', icon: '🌐', monto: 0, pagado: false },
+        { id: 'wom_m', nombre: 'Wom Manu', icon: '📱', monto: 0, pagado: false },
+        { id: 'ripley', nombre: 'Ripley', icon: '💳', monto: 0, pagado: false },
+        { id: 'ggcc', nombre: 'G.G.C.C', icon: '🏢', monto: 0, pagado: false }
+    ];
+
+    let datos = JSON.parse(localStorage.getItem('mis_pagos_v2')) || serviciosIniciales;
+
+    function mostrarMes() {
+        const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+        const d = new Date();
+        document.getElementById('current-month').innerText = meses[d.getMonth()] + " " + d.getFullYear();
+    }
+
+    function calcularTotal() {
+        const total = datos.reduce((acc, s) => s.pagado ? acc + Number(s.monto) : acc, 0);
+        document.getElementById('total-pagado').innerText = `$${total.toLocaleString('es-CL')}`;
+    }
+
+    function guardar() {
+        localStorage.setItem('mis_pagos_v2', JSON.stringify(datos));
+    }
+
+    function togglePago(id) {
+        const item = datos.find(d => d.id === id);
+        item.pagado = !item.pagado;
+        guardar();
+        render(); // Re-renderizamos para actualizar colores y botón
+    }
+
+    function prepararInput(el) {
+        if (el.value === "0") {
+            el.value = "";
+        }
+        // Selecciona todo el texto para que al escribir se borre lo anterior de inmediato
+        setTimeout(() => { el.select(); }, 50);
+    }
+
+    function updateMonto(id, valor) {
+        const item = datos.find(d => d.id === id);
+        item.monto = valor || 0;
+        guardar();
+        calcularTotal();
+    }
+
+    function render() {
+        mostrarMes();
+        const container = document.getElementById('app');
+        container.innerHTML = datos.map(s => `
+            <div class="expense-card">
+                <div class="card-top">
+                    <div class="title-group">
+                        <span class="icon">${s.icon}</span>
+                        <h4>${s.nombre}</h4>
+                    </div>
+                    <input type="number" 
+                           class="amount-input" 
+                           value="${s.monto}" 
+                           onfocus="prepararInput(this)"
+                           oninput="updateMonto('${s.id}', this.value)"
+                           placeholder="0">
+                </div>
+                <div class="card-bottom">
+                    <span style="font-size: 0.8rem; color: #718096;">Estado:</span>
+                    <button onclick="togglePago('${s.id}')" 
+                            class="status-btn ${s.pagado ? 'paid' : 'pending'}">
+                        ${s.pagado ? 'PAGADO' : 'MARCAR PAGO'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        calcularTotal();
+    }
+
+    render();
+</script>
+
+</body>
+</html>
 
